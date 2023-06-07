@@ -1,17 +1,21 @@
 #!/usr/bin/python3
 import os
 import flask
+import werkzeug
 import argparse
 import sys
 import json
+import datetime
+
+from pygbx import Gbx, GbxType
 
 from sqlalchemy import Column, Integer, String, Boolean, or_, and_, asc, desc
-from flask_sqlalchemy import
+from flask_sqlalchemy import SQLAlchemy
+
+app = flask.Flask("TM Friends Replay Server")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLITE_LOCATION") or "sqlite:///sqlite.db"
-
-app = flask.Flask("TM Friends Replay Server")
 db = SQLAlchemy(app)
 
 class ParsedReplay(db.Model):
@@ -27,16 +31,19 @@ class ParsedReplay(db.Model):
     upload_dt   = Column(String)
 
     map_uid     = Column(String) # ghost_uid
-    ghost_login = Column(String)
+    login       = Column(String)
+    cp_times    = Column(String)
 
-    ghost_cp_times = Column(String)
+    def guess_map(self):
+        base = os.path.basename(self.filepath)
+        return base.split("_")[1].split(".Replay")[0]
 
     def get_human_readable_time(self):
-        t = datetime.timedelta(seconds=racetime)
+        t = datetime.timedelta(microseconds=self.race_time*1000)
         t_string = str(t)
-        if t.hours == 0:
-            return t_string[2:]
-        return t_string
+        if t.seconds < 60*60:
+            t_string =  t_string[2:]
+        return t_string[:-4]
 
     def __repr__(self):
         return "{time} on {map_n} by {login}/{uploader}".format(time=self.get_human_readable_time(),
@@ -56,10 +63,10 @@ def replay_from_path(fullpath, uploader=None):
                             race_time=ghost.race_time,
                             uploader=uploader,
                             filepath=fullpath,
-                            map_uid=ghost.uid
-                            ghost_login=ghost.login,
+                            map_uid=ghost.uid,
+                            login=ghost.login,
                             upload_dt=datetime.datetime.now().isoformat(),
-                            ghost.cp_times=",".join(ghost.cp_times))
+                            cp_times=",".join(map(str, ghost.cp_times)))
 
     return replay
 
@@ -72,14 +79,14 @@ def upload():
     if flask.request.method == 'POST':
         #f = flask.request.files['file']
         f_list = flask.request.files.getlist("file[]")
-        print(f_list)
-        return ""
-        fname = werkzeug.utils.secure_filename(f.filename)
-        fullpath = os.path.join("uploads/", fname)
-        f.save(fullpath)
-        replay = replay_from_path(fullpath)
-        db.add(replay)
-        db.commit()
+        for f_storage in f_list:
+            fname = werkzeug.utils.secure_filename(f_storage.filename)
+            fullpath = os.path.join("uploads/", fname)
+            f_storage.save(fullpath)
+            replay = replay_from_path(fullpath)
+            print(replay)
+            db.session.add(replay)
+            db.session.commit()
     else:
         return flask.render_template("upload.html")
 
@@ -94,8 +101,10 @@ if __name__ == "__main__":
     # general parameters #
     parser.add_argument("-i", "--interface", default="127.0.0.1", help="Interface to listen on")
     parser.add_argument("-p", "--port",      default="5000",      help="Port to listen on")
+    args = parser.parse_args()
 
     # startup #
-    args = parser.parse_args()
-    create_app()
+    with app.app_context():
+        create_app()
+
     app.run(host=args.interface, port=args.port)

@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import hashlib
 import os
 import flask
 import werkzeug
@@ -29,8 +30,9 @@ class ParsedReplay(db.Model):
 
     __tablename__ = "replays"
 
+    filehash    = Column(String, primary_key=True)
 
-    replay_id   = Column(Integer, primary_key=True)
+    ghost_id    = Column(Integer)
     race_time   = Column(Integer)
 
     uploader    = Column(String)
@@ -53,7 +55,8 @@ class ParsedReplay(db.Model):
         return t_string[:-4]
 
     def __repr__(self):
-        return "{time} on {map_n} by {login}/{uploader}".format(time=self.get_human_readable_time(),
+        return "{time} on {map_n} by {login}/{uploader}".format(
+                    time=self.get_human_readable_time(),
                     map_n=self.guess_map(), login=self.login, uploader=self.uploader)
 
 def replay_from_path(fullpath, uploader=None):
@@ -66,11 +69,20 @@ def replay_from_path(fullpath, uploader=None):
     if not ghost:
         raise ValueError("No ghost found in GBX file")
 
-    replay = ParsedReplay(replay_id=ghost.id,
+    f_hash = None
+    with open(fullpath, "rb") as f:
+        content = f.read()
+        f_hash = hashlib.sha512(content).hexdigest()
+
+    if not f_hash:
+        raise RuntimeError("Missing file hash for some reason")
+
+    replay = ParsedReplay(filehash=f_hash,
                             race_time=ghost.race_time,
                             uploader=uploader,
                             filepath=fullpath,
                             map_uid=ghost.uid,
+                            ghost_id=ghost.id,
                             login=ghost.login,
                             upload_dt=datetime.datetime.now().isoformat(),
                             cp_times=",".join(map(str, ghost.cp_times)))
@@ -103,6 +115,7 @@ def upload():
             print(replay)
             db.session.add(replay)
             db.session.commit()
+        return ("", 204)
     else:
         return flask.render_template("upload.html")
 

@@ -1,3 +1,5 @@
 *.swp
+instance/
+*.sqlite
 uploads/
 __pycache__/

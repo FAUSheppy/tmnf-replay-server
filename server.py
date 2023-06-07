@@ -18,6 +18,13 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLITE_LOCATION") or "sqlite:///sqlite.db"
 db = SQLAlchemy(app)
 
+class Map(db.Model):
+
+    __tablename__ = "maps"
+
+    map_uid = Column(Integer, primary_key=True)
+    mapname = Column(String)
+
 class ParsedReplay(db.Model):
 
     __tablename__ = "replays"
@@ -68,10 +75,19 @@ def replay_from_path(fullpath, uploader=None):
                             upload_dt=datetime.datetime.now().isoformat(),
                             cp_times=",".join(map(str, ghost.cp_times)))
 
+    if uploader in app.config["TRUSTED_UPLOADERS"]:
+        m = Map(map_uid=replay.map_uid, mapname=replay.guess_map())
+        db.session.merge(m)
+        dn.session.commit()
+
     return replay
 
 @app.route("/")
 def list():
+    # TODO list maps by mapnames
+    # TODO list replays by mapnames
+    # TODO list by user
+    # TODO show all/show only best
     return flask.render_template("index.html")
 
 @app.route("/upload", methods = ['GET', 'POST'])
@@ -91,6 +107,7 @@ def upload():
         return flask.render_template("upload.html")
 
 def create_app():
+    app.config["TRUSTED_UPLOADERS"] = ["sheppy"]
     db.create_all()
 
 if __name__ == "__main__":

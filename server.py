@@ -202,10 +202,9 @@ def replay_from_path(fullpath, uploader=None):
                             upload_dt=datetime.datetime.now().isoformat(),
                             cp_times=",".join(map(str, ghost.cp_times)))
 
-    if uploader in app.config["TRUSTED_UPLOADERS"]:
-        m = Map(map_uid=replay.map_uid, mapname=replay.guess_map())
-        db.session.merge(m)
-        db.session.commit()
+    m = Map(map_uid=replay.map_uid, mapname=replay.guess_map())
+    db.session.merge(m)
+    db.session.commit()
 
     return replay
 
@@ -265,7 +264,6 @@ def upload():
         return flask.render_template("upload.html")
 
 def create_app():
-    app.config["TRUSTED_UPLOADERS"] = ["sheppy"]
     db.create_all()
 
 if __name__ == "__main__":

@@ -211,9 +211,11 @@ def replay_from_path(fullpath, uploader=None):
 
 @app.route("/map-info")
 def list():
+    player = flask.request.headers.get("X-Forwarded-Preferred-Username")
     header_col = ["Player", "Time", "Date", "Replay"]
     map_uid = flask.request.args.get("map_uid")
-    return flask.render_template("map-info.html", header_col=header_col, map_uid=map_uid)
+    return flask.render_template("map-info.html", header_col=header_col, map_uid=map_uid,
+                                    player=player)
 
 @app.route("/")
 def mapnames():
@@ -234,6 +236,8 @@ def source(map_uid):
 def upload():
 
     results = []
+
+    uploader = flask.request.headers.get("X-Forwarded-Preferred-Username")
     if flask.request.method == 'POST':
         #f = flask.request.files['file']
         f_list = flask.request.files.getlist("file[]")
@@ -242,7 +246,7 @@ def upload():
             fullpath = os.path.join("uploads/", fname)
             f_storage.save(fullpath)
             try:
-                replay = replay_from_path(fullpath, uploader="sheppy")
+                replay = replay_from_path(fullpath, uploader=uploader)
                 db.session.add(replay)
                 db.session.commit()
             except ValueError as e:

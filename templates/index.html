@@ -1,0 +1,31 @@
+<head>
+    {% include "head.html" %}
+</head>
+<body>
+    <table>
+	<thead>
+		<tr>
+			<th class="px-2">Map</th>
+			{% if player %}
+			<th class="px-2">Personal Best</th>
+			{% endif %}
+			<th class="px-2">Record</th>
+			<th class="px-2">Record Age</th>
+		</tr>
+	</thead>
+	<tbody>
+    {% for map in maps %}
+		<tr>
+			<td class="px-2">
+                <a href="/map-info?map_uid={{ map.map_uid }}">{{ map.mapname }}</a>
+            </td>
+			{% if player %}
+			<td class="px-2">{{ map.get_best_for_player(player) }}</td>
+			{% endif %}
+			<td class="px-2">{{ map.get_best_replay_repr() }}</td>
+			<td class="px-2">{{ map.get_best_replay_age() }} days</td>
+		</tr>			
+	{% endfor %}
+	</tbody>
+    </table>
+</body>

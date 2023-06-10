@@ -27,6 +27,30 @@ class Map(db.Model):
     map_uid = Column(String, primary_key=True)
     mapname = Column(String)
 
+    def get_best_replay(self):
+
+        q = db.session.query(ParsedReplay).filter(ParsedReplay.map_uid == self.map_uid)
+        r = q.order_by(asc(ParsedReplay.race_time)).first()
+        return r
+
+    def get_best_replay_for_player(self, player):
+
+        q = db.session.query(ParsedReplay).filter(ParsedReplay.map_uid == self.map_uid)
+        r = q.filter(or_(ParsedReplay.uploader == player, ParsedReplay.login == player)).first()
+        return r
+
+    def get_best_replay_repr(self):
+        r = self.get_best_replay()
+        if not r:
+            return "-"
+        return str(r)
+
+    def get_best_replay_age(self):
+
+        parsed = datetime.datetime.fromisoformat(self.get_best_replay().upload_dt)
+        delta = datetime.datetime.now() - parsed
+        return delta.days
+
 class ParsedReplay(db.Model):
 
     __tablename__ = "replays"
@@ -56,9 +80,9 @@ class ParsedReplay(db.Model):
         return t_string[:-4]
 
     def __repr__(self):
-        return "{time} on {map_n} by {login}/{uploader}".format(
+        return "{time} on {map_n} by {login}".format(
                     time=self.get_human_readable_time(),
-                    map_n=self.guess_map(), login=self.login, uploader=self.uploader)
+                    map_n=self.guess_map(), login=self.login)
 
     def to_dict(self):
         d = dict()
@@ -87,10 +111,10 @@ class DataTable():
         # oder variable for use with sqlalchemy
         if self.orderAsc:
             self.orderAscDbClass = sqlalchemy.asc
-            self.orderAscDbClassReverse = sqlalchemy.desc
+            self.orderAscDbClassReverse = sqlalchemy.asc
         else:
             self.orderAscDbClass = sqlalchemy.desc
-            self.orderAscDbClassReverse = sqlalchemy.asc
+            self.orderAscDbClassReverse = sqlalchemy.desc
 
     def __build(self, results, total, filtered):
 
@@ -170,7 +194,8 @@ def replay_from_path(fullpath, uploader=None):
                             race_time=ghost.race_time,
                             uploader=uploader,
                             filepath=fullpath,
-                            map_uid=ghost.uid,
+                            #map_uid=ghost.uid,
+                            map_uid=os.path.basename(fullpath).split("_")[1].split(".Replay")[0],
                             ghost_id=ghost.id,
                             login=ghost.login,
                             upload_dt=datetime.datetime.now().isoformat(),
@@ -183,25 +208,24 @@ def replay_from_path(fullpath, uploader=None):
 
     return replay
 
-@app.route("/map")
+@app.route("/map-info")
 def list():
-    # TODO list maps by mapnames
-    # TODO list replays by mapnames
-    # TODO list by user
-    # TODO show all/show only best
     header_col = ["Player", "Time", "Date", "Replay"]
     map_uid = flask.request.args.get("map_uid")
-    return flask.render_template("index.html", header_col=header_col, map_uid=map_uid)
+    return flask.render_template("map-info.html", header_col=header_col, map_uid=map_uid)
 
 @app.route("/")
 def mapnames():
+    # TODO list by user
+    maps = db.session.query(Map).order_by(asc(Map.mapname)).all()
+    return flask.render_template("index.html", maps=maps)
 
-@app.route("/data-source<path:path>", methods=["POST"])
-def source():
+@app.route("/data-source/<path:map_uid>", methods=["POST"])
+def source(map_uid):
 
     # path = map_uid
     dt = DataTable(flask.request.form.to_dict(), ["login", "race_time", "upload_dt", "filepath" ])
-    jsonDict = dt.get(path)
+    jsonDict = dt.get(map_uid=map_uid)
     return flask.Response(json.dumps(jsonDict), 200, mimetype='application/json')
 
 @app.route("/upload", methods = ['GET', 'POST'])

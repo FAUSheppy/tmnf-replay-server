@@ -16,7 +16,7 @@
           dt = $('#tableMain').DataTable({
               serverSide: true,
                   ajax: {
-                  url: '/data-source',
+                  url: '/data-source/{{ map_uid }}',
                   type: 'POST'
               },
   	          "columnDefs": [ 

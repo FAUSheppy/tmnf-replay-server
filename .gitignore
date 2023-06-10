@@ -3,3 +3,4 @@ instance/
 *.sqlite
 uploads/
 __pycache__/
+*.db

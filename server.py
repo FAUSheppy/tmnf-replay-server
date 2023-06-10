@@ -177,25 +177,26 @@ def replay_from_path(fullpath, uploader=None):
     if not fullpath.endswith(".gbx"):
         raise ValueError("Path must be a .gbx file")
 
+
     g = Gbx(fullpath)
     ghost = g.get_class_by_id(GbxType.CTN_GHOST)
     if not ghost:
         raise ValueError("No ghost found in GBX file")
 
     f_hash = None
+    mapname_from_filename = os.path.basename(fullpath).split("_")[1].split(".Replay")[0]
     with open(fullpath, "rb") as f:
         content = f.read()
+        decoded_string = content.decode("ascii", errors="ignore")
+        if mapname_from_filename not in decoded_string:
+            raise ValueError("Mapname indicated by filename does not match map in file")
         f_hash = hashlib.sha512(content).hexdigest()
-
-    if not f_hash:
-        raise RuntimeError("Missing file hash for some reason")
 
     replay = ParsedReplay(filehash=f_hash,
                             race_time=ghost.race_time,
                             uploader=uploader,
                             filepath=fullpath,
-                            #map_uid=ghost.uid,
-                            map_uid=os.path.basename(fullpath).split("_")[1].split(".Replay")[0],
+                            map_uid=mapname_from_filename,
                             ghost_id=ghost.id,
                             login=ghost.login,
                             upload_dt=datetime.datetime.now().isoformat(),
@@ -231,6 +232,8 @@ def source(map_uid):
 
 @app.route("/upload", methods = ['GET', 'POST'])
 def upload():
+
+    results = []
     if flask.request.method == 'POST':
         #f = flask.request.files['file']
         f_list = flask.request.files.getlist("file[]")
@@ -238,11 +241,22 @@ def upload():
             fname = werkzeug.utils.secure_filename(f_storage.filename)
             fullpath = os.path.join("uploads/", fname)
             f_storage.save(fullpath)
-            replay = replay_from_path(fullpath, uploader="sheppy")
-            print(replay)
-            db.session.add(replay)
-            db.session.commit()
-        return ("", 204)
+            try:
+                replay = replay_from_path(fullpath, uploader="sheppy")
+                db.session.add(replay)
+                db.session.commit()
+            except ValueError as e:
+                results += [(fname, str(e))]
+                continue
+            except sqlalchemy.exc.IntegrityError as e:
+                results += [(fname, str(e.args))]
+                db.session.rollback()
+                continue
+
+            results += [(fname, None)]
+
+        return flask.render_template("upload-post.html", results=results)
+
     else:
         return flask.render_template("upload.html")
 

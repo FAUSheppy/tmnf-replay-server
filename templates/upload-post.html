@@ -1,0 +1,17 @@
+<head>
+    {% include "head.html" %}
+</head>
+<body>
+    {% include "home-button.html" %}
+    <div class="mb-5 container">
+        {% for r in results %}
+            <b>{{ r[0] }}</b>
+            {% if r[1] %}
+            <i style="color: red;">{{ r[1] }}</i>
+            {% else %}
+            <i style="color: green;">Success</i>
+            {% endif %}
+            <br>
+        {% endfor %}
+    </div>
+</body>

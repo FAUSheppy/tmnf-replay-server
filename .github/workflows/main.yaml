@@ -1,4 +1,4 @@
-name: Container Build for certificate-manager
+name: Container Build for tmnf-replay-server
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PASS }}
       -
-        name: certificate-manager
+        name: tmnf-docker
         uses: docker/build-push-action@v3
         with:
           context: .

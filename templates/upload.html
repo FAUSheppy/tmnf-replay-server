@@ -1,9 +1,15 @@
 <html>
+   <head>
+    {% include "head.html" %}
+   </head>
    <body>
       {% include 'home-button.html' %}
-      <form action="/upload" method="POST" enctype="multipart/form-data">
-         <input type="file" name="file[]" multiple=""/>
-         <input type="submit"/>
-      </form>   
+      <div class="container">
+        <form class="p-3" action="/upload" method="POST" enctype="multipart/form-data"
+                style="border-style: dashed">
+           <input type="file" name="file[]" multiple=""/>
+           <input type="submit"/>
+        </form>
+      </div>
    </body>
 </html>

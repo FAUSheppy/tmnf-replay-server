@@ -2,5 +2,6 @@
 instance/
 *.sqlite
 uploads/
+uploads-old/
 __pycache__/
 *.db

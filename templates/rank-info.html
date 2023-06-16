@@ -1,0 +1,15 @@
+<head>
+    {% include "head.html" %}
+</head>
+<body>
+    {% include "upload-button.html" %}
+    {% include "home-button.html" %}
+    {% for rank, values in rank_dict.items() %}
+    <h4>Rank {{ rank }} Count</h4>
+    <div class="w-100 my-5">
+        {% for login, count in values.items() %}
+        <p>{{ count }}{{ login }}</p>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</body>

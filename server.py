@@ -208,6 +208,40 @@ def replay_from_path(fullpath, uploader=None):
 
     return replay
 
+def get_number_of_rank_x(rank):
+
+    rank = int(rank)
+    if rank < 1 or rank > 10:
+        raise ValueError("Rank query must be between 1 and 10 (was {}".format(rank))
+
+    rank_query = '''SELECT login,COUNT(login)
+                    FROM (SELECT dISTINCT login||map_uid as dis, login, map_uid
+                            FROM replays r
+                            WHERE r.login IN (
+                                SELECT login FROM replays r2
+                                WHERE r2.map_uid = r.map_uid
+                                ORDER BY r2.race_time ASC
+                                LIMIT {limit}
+                                OFFSET {offset}
+                            )
+                    )
+                  GROUP BY login;'''.format(limit=rank, offset=rank-1)
+
+    sql_query = sqlalchemy.sql.text(rank_query)
+    result = db.session.execute(sql_query).all()
+    return dict((login, count) for login, count in sorted(result, key=lambda x: x[1], reverse=True))
+
+@app.route("/ranking-overview")
+def ranks():
+
+    rank_dict = {
+        1 : get_number_of_rank_x(1),
+        2 : get_number_of_rank_x(2),
+        3 : get_number_of_rank_x(3),
+    }
+    return flask.render_template("rank-info.html", rank_dict=rank_dict)
+
+
 @app.route("/map-info")
 def list():
     player = flask.request.headers.get("X-Forwarded-Preferred-Username")

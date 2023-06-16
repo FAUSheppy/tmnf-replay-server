@@ -36,7 +36,8 @@ class Map(db.Model):
     def get_best_replay_for_player(self, player):
 
         q = db.session.query(ParsedReplay).filter(ParsedReplay.map_uid == self.map_uid)
-        r = q.filter(or_(ParsedReplay.uploader == player, ParsedReplay.login == player)).first()
+        q = q.filter(or_(ParsedReplay.uploader == player, ParsedReplay.login == player))
+        r = q.order_by(asc(ParsedReplay.race_time)).first()
         return r
 
     def get_second_best_replay(self):

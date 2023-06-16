@@ -28,6 +28,8 @@
 			<td class="px-2">{{ pb.get_human_readable_time() }}</td>
                 {% elif pb %}
 			<td class="px-2" style="color: darkgreen">CRH</td>
+                {% else %}
+			<td class="px-2">-</td>
                 {% endif %}
 			{% endif %}
 			<td class="px-2">{{ map.get_best_replay_repr().split(" ")[0] }}</td>

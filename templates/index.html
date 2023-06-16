@@ -23,7 +23,10 @@
                 <a href="/map-info?map_uid={{ map.map_uid }}">{{ map.mapname }}</a>
             </td>
 			{% if player %}
-			<td class="px-2">{{ map.get_best_for_player(player) }}</td>
+                {% set pb = map.get_best_replay_for_player(player) %}
+                {% if pb %}
+			<td class="px-2">{{ pb.get_human_readable_time() }}</td>
+                {% endif %}
 			{% endif %}
 			<td class="px-2">{{ map.get_best_replay_repr().split(" ")[0] }}</td>
 			<td class="px-2">{{ map.get_best_replay().clean_login() }}</td>

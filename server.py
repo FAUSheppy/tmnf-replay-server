@@ -39,6 +39,29 @@ class Map(db.Model):
         r = q.filter(or_(ParsedReplay.uploader == player, ParsedReplay.login == player)).first()
         return r
 
+    def get_second_best_replay(self):
+
+        q = db.session.query(ParsedReplay).filter(ParsedReplay.map_uid == self.map_uid)
+        q = q.filter(ParsedReplay.login != self.get_best_replay().login)
+        results = q.order_by(asc(ParsedReplay.race_time)).all()
+        if not results or len(results) < 1:
+            return None
+        return results[0] # because first is already filtered out by login filter
+
+    def get_record_replay_percent_diff(self):
+
+        best = self.get_best_replay()
+        second = self.get_second_best_replay()
+
+        if not second:
+            return ""
+        elif best.race_time == second.race_time:
+            return "Tied by {}".format(second.clean_login())
+        else:
+            dif = second.race_time - best.race_time
+            percent = dif/best.race_time*100
+            return "+ {:.2f}% by {}".format(percent, second.clean_login())
+
     def get_best_replay_repr(self):
         r = self.get_best_replay()
         if not r:
@@ -67,6 +90,12 @@ class ParsedReplay(db.Model):
     map_uid     = Column(String) # ghost_uid
     login       = Column(String)
     cp_times    = Column(String)
+
+    def clean_login(self):
+        if "/" in self.login:
+            return self.login.split("/")[0]
+        else:
+            return self.login
 
     def guess_map(self):
         base = os.path.basename(self.filepath)
@@ -256,8 +285,9 @@ def list():
 def mapnames():
     # TODO list by user
     # TODO download replay
+    player = flask.request.headers.get("X-Forwarded-Preferred-Username")
     maps = db.session.query(Map).order_by(asc(Map.mapname)).all()
-    return flask.render_template("index.html", maps=maps)
+    return flask.render_template("index.html", maps=maps, player=player)
 
 @app.route("/data-source/<path:map_uid>", methods=["POST"])
 def source(map_uid):

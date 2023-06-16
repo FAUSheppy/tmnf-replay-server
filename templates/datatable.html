@@ -21,6 +21,20 @@
               },
   	          "columnDefs": [ 
   	              {
+                    "targets": 2,
+                    "render": function ( data, type, full, meta ) {
+                                  const dateString = data
+                                  const dateObj = new Date(dateString);
+                                  const options = { day: '2-digit',
+                                                    month: 'long',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit' };
+                                  const formattedDate = dateObj.toLocaleString('de-DE', options);
+                                  return formattedDate
+                              }
+                  },
+  	              {
                     "targets": 3,
                     "render": function ( data, type, full, meta ) {
                         	     return '<a href=\"/static/'+data+'\" download>Download</a>';

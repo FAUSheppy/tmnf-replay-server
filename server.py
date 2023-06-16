@@ -77,7 +77,9 @@ class ParsedReplay(db.Model):
         t_string = str(t)
         if t.seconds < 60*60:
             t_string =  t_string[2:]
-        return t_string[:-4]
+        if t.microseconds != 0:
+            return t_string[:-4]
+        return t_string + ".00"
 
     def __repr__(self):
         return "{time} on {map_n} by {login}".format(

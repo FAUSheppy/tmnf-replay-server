@@ -289,6 +289,20 @@ def mapnames():
     maps = db.session.query(Map).order_by(asc(Map.mapname)).all()
     return flask.render_template("index.html", maps=maps, player=player)
 
+@app.route("/open-info")
+def openinfo():
+    maps = db.session.query(Map).order_by(asc(Map.mapname)).all()
+    data = dict()
+
+    for m in maps:
+
+        best_replay = m.get_best_replay()
+        player = best_replay.clean_login()
+        race_time = best_replay.race_time
+        data.update( { m.mapname : { "player" : player, "time" : race_time } } )
+
+    return flask.jsonify(data)
+
 @app.route("/data-source/<path:map_uid>", methods=["POST"])
 def source(map_uid):
 

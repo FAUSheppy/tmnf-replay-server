@@ -285,7 +285,6 @@ def list():
 @app.route("/")
 def mapnames():
     # TODO list by user
-    # TODO download replay
     player = flask.request.headers.get("X-Forwarded-Preferred-Username")
     maps = db.session.query(Map).order_by(asc(Map.mapname)).all()
     return flask.render_template("index.html", maps=maps, player=player)

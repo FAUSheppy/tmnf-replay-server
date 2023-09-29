@@ -1,0 +1,63 @@
+<div style="font-size: 16px; font-weight: 300;" class="mt-5 mb-3 ml-2 mr-2" role="main">
+  <table id="tableMain" class="table table-striped table-bordered table-sm"
+          cellspacing="0">
+      <thead>
+          <tr>
+              {% for item in header_col %}
+              <th class="th-sm font-weighIt-bold">{{ item }}</th>
+              {% endfor %}
+          </tr>
+      </thead>
+      <!-- tbody serverside processing -->
+  </table>
+  <script defer>
+      var dt = null
+      $(document).ready(function () {
+          dt = $('#tableMain').DataTable({
+              serverSide: true,
+                  ajax: {
+                  url: '/data-source-index',
+                  type: 'POST'
+              },
+  	          "columnDefs": [ 
+  	              {
+                    "targets": 2,
+                    "render": function ( data, type, full, meta ) {
+                                  const dateString = data
+                                  const dateObj = new Date(dateString);
+                                  const options = { day: '2-digit',
+                                                    month: 'long',
+                                                    year: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit' };
+                                  const formattedDate = dateObj.toLocaleString('de-DE', options);
+                                  return formattedDate
+                              }
+                  },
+  	              {
+                    "targets": 3,
+                    "render": function ( data, type, full, meta ) {
+                        	     return '<a href=\"/static/'+data+'\" download>Download</a>';
+                              }
+                  },
+                  {
+                    "targets": 0,
+                    "render": function ( data, type, full, meta ) {
+                                 const regex = /^([^/]+)/;
+                                 const match = data.match(regex);
+                                 const prefix = match ? match[1] : '';
+                                 const ip4regex = /\b(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?\b/;
+                                 const containsIPv4 = ip4regex.test(data);
+                                 if(containsIPv4){
+                                    return prefix
+                                 }else{
+                                    return data
+                                 }
+                              }
+                  }
+  	          ]
+          });
+          $('.dataTables_length').addClass('bs-select');
+      });
+  </script>
+</div>

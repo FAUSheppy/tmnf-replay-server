@@ -204,6 +204,34 @@ class DataTable():
 
         return self.__build(results, total, filtered)
 
+    def get_all_maps(self):
+
+        filtered = 0
+        total    = 0
+
+        # base query
+        query = db.session.query(Map)
+        total = query.count()
+        if self.searchValue:
+
+            # search string (search for all substrings individually #
+            filterQuery = query
+
+            for substr in self.searchValue.split(" "):
+                searchSubstr = "%{}%".format(substr.strip())
+                filterQuery  = filterQuery.filter(Map.mapname.like(searchSubstr))
+
+            filtered = filterQuery.count()
+            results = filterQuery.offset(self.start).limit(self.length).all()
+
+        else:
+
+            query  = query.order_by(self.orderAscDbClassReverse(Map.mapname))
+            results  = query.offset(self.start).limit(self.length).all()
+            filtered = total
+
+        return self.__build(results, total, filtered)
+
 def replay_from_path(fullpath, uploader=None):
 
     if not fullpath.endswith(".gbx"):
@@ -308,6 +336,14 @@ def source(map_uid):
 
     # path = map_uid
     dt = DataTable(flask.request.form.to_dict(), ["login", "race_time", "upload_dt", "filepath" ])
+    jsonDict = dt.get(map_uid=map_uid)
+    return flask.Response(json.dumps(jsonDict), 200, mimetype='application/json')
+
+@app.route("/data-source-index", methods=["POST"])
+def index_source(map_uid):
+
+    cols = ["mapname", "personal_"]
+    dt = DataTable(flask.request.form.to_dict(), )
     jsonDict = dt.get(map_uid=map_uid)
     return flask.Response(json.dumps(jsonDict), 200, mimetype='application/json')
 

@@ -234,7 +234,7 @@ class DataTable():
 
 def replay_from_path(fullpath, uploader=None):
 
-    if not fullpath.endswith(".gbx"):
+    if not fullpath.lower().endswith(".gbx"):
         raise ValueError("Path must be a .gbx file")
 
 

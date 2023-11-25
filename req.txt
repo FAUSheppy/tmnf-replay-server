@@ -2,3 +2,4 @@ flask
 flask-sqlalchemy
 pygbx
 werkzeug
+xmltodict

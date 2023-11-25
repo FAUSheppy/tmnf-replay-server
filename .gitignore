@@ -5,3 +5,8 @@ uploads/
 uploads-old/
 __pycache__/
 *.db
+
+# tm replay files
+*.gbx
+*.Gbx
+*.GBX

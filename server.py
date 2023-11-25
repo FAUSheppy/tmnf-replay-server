@@ -9,6 +9,7 @@ import json
 import datetime
 
 from pygbx import Gbx, GbxType
+import tm2020parser
 
 import sqlalchemy
 from sqlalchemy import Column, Integer, String, Boolean, or_, and_, asc, desc
@@ -92,15 +93,14 @@ class ParsedReplay(db.Model):
     login       = Column(String)
     cp_times    = Column(String)
 
+    login_uid_tm2020 = Column(String)
+    game = Column(String)
+
     def clean_login(self):
         if "/" in self.login:
             return self.login.split("/")[0]
         else:
             return self.login
-
-    def guess_map(self):
-        base = os.path.basename(self.filepath)
-        return base.split("_")[1].split(".Replay")[0]
 
     def get_human_readable_time(self):
         t = datetime.timedelta(microseconds=self.race_time*1000)
@@ -114,7 +114,7 @@ class ParsedReplay(db.Model):
     def __repr__(self):
         return "{time} on {map_n} by {login}".format(
                     time=self.get_human_readable_time(),
-                    map_n=self.guess_map(), login=self.login)
+                    map_n=self.map_uid, login=self.login)
 
     def to_dict(self):
         d = dict()
@@ -232,40 +232,47 @@ class DataTable():
 
         return self.__build(results, total, filtered)
 
-def replay_from_path(fullpath, uploader=None):
-
-    if not fullpath.lower().endswith(".gbx"):
-        raise ValueError("Path must be a .gbx file")
-
-
-    g = Gbx(fullpath)
-    ghost = g.get_class_by_id(GbxType.CTN_GHOST)
-    if not ghost:
-        raise ValueError("No ghost found in GBX file")
-
-    f_hash = None
-    mapname_from_filename = os.path.basename(fullpath).split("_")[1].split(".Replay")[0]
+def _extracted_login_from_file(fullpath):
+    '''Extract a login from a tmnf 2020 replay manually'''
+    
+    # TODO fix underscores in filenames #
+    if "its_a_sheppy" in fullpath:
+        login_from_filename = "its_a_sheppy"
+    else:
+        login_from_filename = os.path.basename(fullpath).split("_")[0]
     with open(fullpath, "rb") as f:
         content = f.read()
         decoded_string = content.decode("ascii", errors="ignore")
-        if mapname_from_filename not in decoded_string:
-            raise ValueError("Mapname indicated by filename does not match map in file")
-        f_hash = hashlib.sha512(content).hexdigest()
+        if login_from_filename not in decoded_string:
+            raise ValueError("Login indicated by filename does not match login in file")
+    return login_from_filename
 
-    replay = ParsedReplay(filehash=f_hash,
-                            race_time=ghost.race_time,
-                            uploader=uploader,
-                            filepath=fullpath,
-                            map_uid=mapname_from_filename,
-                            ghost_id=ghost.id,
-                            login=ghost.login,
-                            upload_dt=datetime.datetime.now().isoformat(),
-                            cp_times=",".join(map(str, ghost.cp_times)))
 
-    m = Map(map_uid=replay.map_uid, mapname=replay.guess_map())
+def replay_from_path(fullpath, uploader=None):
+    '''Load a replay from uploaded path'''
+
+    # use ghost wrapper to parse both tmnf and tm2020 #
+    ghost = tm2020parser.GhostWrapper(fullpath, uploader)
+
+    # build a database replay from ghost wrapper #
+    replay = ParsedReplay(filehash=ghost.filehash,
+                        race_time=ghost.race_time,
+                        uploader=ghost.uploader,
+                        filepath=ghost.fullpath,
+                        map_uid=ghost.map_uid,
+                        ghost_id=ghost.ghost_id,
+                        login=ghost.login,
+                        login_uid_tm2020=ghost.login_uid_tm2020,
+                        upload_dt=ghost.upload_dt,
+                        cp_times=ghost.cp_times,
+                        game=ghost.game)
+    
+    # build database map object from replay #
+    m = Map(map_uid=replay.map_uid, mapname=replay.map_uid)
+
+    # merge the map & commit and return the replay #
     db.session.merge(m)
     db.session.commit()
-
     return replay
 
 def get_number_of_rank_x(rank):

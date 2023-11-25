@@ -319,10 +319,17 @@ def list():
 
 @app.route("/")
 def mapnames():
+    '''Index Location'''
+
     # TODO list by user
     player = flask.request.headers.get("X-Forwarded-Preferred-Username")
     maps = db.session.query(Map).order_by(asc(Map.mapname)).all()
-    return flask.render_template("index.html", maps=maps, player=player)
+
+    # FIXME better handling for unwanted maps #
+    allowed = ("A", "B", "C", "D", "E", "Fall", "Winter", "Spring", "Summer")
+    maps_filtered = filter(lambda m: m.mapname.startswith(allowed), maps)
+
+    return flask.render_template("index.html", maps=maps_filtered, player=player)
 
 @app.route("/open-info")
 def openinfo():

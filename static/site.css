@@ -19,6 +19,7 @@ th{
     margin-bottom: 2px;
     font-weight: bold;
 }
+
 table{
     border-collapse:separate;
     border-spacing: 0 0.25em;
@@ -73,6 +74,10 @@ input{
     .margin-table-mid{
         margin-right: 2px;
         margin-left: 2px;
+    }
+    .runner-up{
+        display: none;
+        width: 0;
     }
 }
 

@@ -26,6 +26,17 @@ table{
     border-color: transparent;
 }
 
+@media screen and (max-width: 1000px){
+    table{
+       width:100%;
+       table-layout: fixed;
+       overflow-wrap: break-word;
+    }
+    td{
+        font-size: 2.5vw;
+    }
+}
+
 .m-auto{
     margin: auto;
 }

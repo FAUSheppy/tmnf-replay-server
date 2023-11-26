@@ -26,17 +26,6 @@ table{
     border-color: transparent;
 }
 
-@media screen and (max-width: 1000px){
-    table{
-       width:100%;
-       table-layout: fixed;
-       overflow-wrap: break-word;
-    }
-    td{
-        font-size: 2.5vw;
-    }
-}
-
 .m-auto{
     margin: auto;
 }
@@ -64,3 +53,26 @@ select{
 input{
     background: darkgray !important;
 }
+
+@media screen and (max-width: 1000px){
+    table{
+       width:100%;
+       table-layout: fixed;
+       overflow-wrap: break-word;
+    }
+    td{
+        font-size: 3vw !important;
+        text-align: left;
+    }
+    .margin-l{
+        margin-left: 0px;
+    }
+    .margin-r{
+        margin-right: 0px;
+    }
+    .margin-table-mid{
+        margin-right: 2px;
+        margin-left: 2px;
+    }
+}
+

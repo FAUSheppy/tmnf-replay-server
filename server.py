@@ -27,6 +27,7 @@ class Map(db.Model):
 
     map_uid = Column(String, primary_key=True)
     mapname = Column(String)
+    game    = Column(String)
 
     def get_best_replay(self):
 
@@ -268,7 +269,7 @@ def replay_from_path(fullpath, uploader=None):
                         game=ghost.game)
     
     # build database map object from replay #
-    m = Map(map_uid=replay.map_uid, mapname=replay.map_uid)
+    m = Map(map_uid=replay.map_uid, mapname=replay.map_uid, game=replay.game)
 
     # merge the map & commit and return the replay #
     db.session.merge(m)
@@ -323,7 +324,18 @@ def mapnames():
 
     # TODO list by user
     player = flask.request.headers.get("X-Forwarded-Preferred-Username")
-    maps = db.session.query(Map).order_by(asc(Map.mapname)).all()
+    maps_query = db.session.query(Map).order_by(asc(Map.mapname))
+
+    # limit leaderboard to game #
+    game = flask.request.args.get("game")
+    if game == "tm2020":
+        maps_query = maps_query.filter(Map.game=="tm2020")
+    elif game=="tmnf":
+        maps_query = maps_query.filter(Map.game!="tm2020")
+    else:
+        pass
+
+    maps = maps_query.all()
 
     # FIXME better handling for unwanted maps #
     allowed = ("A", "B", "C", "D", "E", "Fall", "Winter", "Spring", "Summer")
@@ -410,4 +422,4 @@ if __name__ == "__main__":
     with app.app_context():
         create_app()
 
-    app.run(host=args.interface, port=args.port)
+    app.run(host=args.interface, port=args.port, debug=True)

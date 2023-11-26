@@ -1,0 +1,55 @@
+body{
+    background: #2b3035;
+}
+
+td{
+    border-bottom: 1px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    font-size: 17px !important;
+    background: #343a40;
+}
+tr{
+    margin-top: 2px;
+    margin-bottom: 2px;
+    color: white;
+}
+th{
+    margin-top: 2px;
+    margin-bottom: 2px;
+    font-weight: bold;
+}
+table{
+    border-collapse:separate;
+    border-spacing: 0 0.25em;
+    border-bottom: 3px solid;
+    border-color: transparent;
+}
+
+.m-auto{
+    margin: auto;
+}
+
+.margin-r{
+    margin-right: 20px;
+}
+
+.margin-l{
+    margin-left: 20px;
+}
+
+.margin-table-mid{
+    margin-left: 20px;
+}
+
+.self-record{
+    background: #354034;
+}
+
+select{
+    background: darkgray !important;
+}
+
+input{
+    background: darkgray !important;
+}

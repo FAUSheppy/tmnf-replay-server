@@ -3,41 +3,78 @@
 </head>
 <body>
     {% include "upload-button.html" %}
-    <table>
+    <button class="ml-4 mt-4 mb-4 btn btn-info" onclick="window.location.href='/?game=tmnf'">
+        TMNF
+    </button>
+    <button class="mt-4 mb-4 btn btn-info" onclick="window.location.href='/?game=tm2020'">
+        TM2020
+    </button>
+    <button class="mt-4 mb-4 btn btn-info" onclick="window.location.href='/'">
+        All
+    </button>
+    <table class="m-auto">
 	<thead>
 		<tr>
-			<th class="px-2">Map</th>
+			<th class="px-2">
+				<div class="margin-table-mid">Map</div>
+			</th>
 			{% if player %}
-			<th class="px-2">Personal Best</th>
+			<th class="px-2">
+				<div class="margin-table-mid">Personal Best</div>
+			</th>
 			{% endif %}
-			<th class="px-2">Record</th>
-			<th class="px-2">Record Holder</th>
-			<th class="px-2">Record Age</th>
-			<th class="px-2">Runner Up (%)</th>
+			<th class="px-2">
+				<div class="margin-table-mid">Record</div>
+			</th>
+			<th class="px-2">
+				<div class="margin-table-mid">Record Holder</div>
+			</th>
+			<th class="px-2">
+				<div class="margin-table-mid">Record Age</div>
+			</th>
+			<th class="px-2">
+				<div class="margin-table-mid">Runner Up (%)</div>
+			</th>
 		</tr>
 	</thead>
 	<tbody>
     {% for map in maps %}
 		<tr>
 			<td class="px-2">
-                <a href="/map-info?map_uid={{ map.map_uid }}">{{ map.mapname }}</a>
+                <a class="margin-l" href="/map-info?map_uid={{ map.map_uid }}">{{ map.mapname }}</a>
             </td>
 			{% if player %}
                 {% set pb = map.get_best_replay_for_player(player) %}
                 {% if pb and pb.race_time != map.get_best_replay().race_time %}
-			<td class="px-2">{{ pb.get_human_readable_time() }}</td>
-                {% elif pb %}
-			<td class="px-2" style="color: darkgreen">CRH</td>
-                {% else %}
-			<td class="px-2">-</td>
-                {% endif %}
+				<td class="px-2">
+            	    <div class="margin-table-mid">{{ pb.get_human_readable_time() }}</div>
+            	</td>
+            	{% elif pb %}
+				<td class="px-2" style="color: darkgreen">
+					<div class="margin-table-mid">CRH</div>
+				</td>
+            	{% else %}
+				<td class="px-2">
+					<div class="margin-table-mid">-</div>
+				</td>
+            	{% endif %}
 			{% endif %}
-			<td class="px-2">{{ map.get_best_replay_repr().split(" ")[0] }}</td>
-			<td class="px-2">{{ map.get_best_replay().clean_login() }}</td>
-			<td class="px-2">{{ map.get_best_replay_age() }} days</td>
-			<td class="px-2">{{ map.get_record_replay_percent_diff() }}</td>
+			<td class="px-2">
+				<div class="margin-table-mid">{{ map.get_best_replay_repr().split(" ")[0] }}</div>
+			</td>
+			<td class="px-2">
+				<div class="margin-table-mid">{{ map.get_best_replay().clean_login() }}</div>
+			</td>
+			<td class="px-2">
+				<div class="margin-table-mid">{{ map.get_best_replay_age() }} days</div>
+			</td>
+			<td class="px-2">
+           		<div class="margin-r">{{ map.get_record_replay_percent_diff() }}</div>
+            </td>
 		</tr>			
 	{% endfor %}
 	</tbody>
     </table>
+	<div style="padding-bottom: 30px;">
+	</div>
 </body>

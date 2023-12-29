@@ -29,4 +29,4 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: "${{ secrets.REGISTRY }}/tmnf-replay-server:latest"
+          tags: "${{ secrets.REGISTRY }}/atlantishq/tmnf-replay-server:latest"

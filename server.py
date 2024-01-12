@@ -77,6 +77,17 @@ class Map(db.Model):
         delta = datetime.datetime.now() - parsed
         return delta.days
 
+class UserSettings(db.Model):
+
+    __tablename__ = "user_settings"
+
+    show_tm_2020         = Column(Boolean)
+    show_tmnf            = Column(Boolean)
+    show_tm_2020_current = Column(Boolean)
+
+    notifcations_all     = Column(Boolean)
+    notifcations_self    = Column(Boolean)
+
 class ParsedReplay(db.Model):
 
     __tablename__ = "replays"
@@ -390,6 +401,7 @@ def upload():
                 replay = replay_from_path(fullpath, uploader=uploader)
                 db.session.add(replay)
                 db.session.commit()
+                check_replay_trigger(replay)
             except ValueError as e:
                 results += [(fname, str(e))]
                 continue
@@ -404,6 +416,14 @@ def upload():
 
     else:
         return flask.render_template("upload.html")
+
+def check_replay_trigger(replay):
+
+    # get replay rank
+    # get second best
+    # uploader = second best owner
+    # check notifications on
+    # request to dispatch
 
 def create_app():
     db.create_all()

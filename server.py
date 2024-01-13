@@ -106,7 +106,7 @@ def update_user_settings():
                                     notifications_all=False)
         db.session.add(settings)
         db.session.commit()
-        settings = db.session.query(UserSettings).fitler(UserSettings.user==user_helper).first()
+        settings = db.session.query(UserSettings).filter(UserSettings.user==user_helper).first()
 
 
     if flask.request.method == "GET":

@@ -403,6 +403,7 @@ def upload():
                 replay = replay_from_path(fullpath, uploader=uploader)
                 db.session.add(replay)
                 db.session.commit()
+                check_replay_trigger(replay)
             except ValueError as e:
                 results += [(fname, str(e))]
                 continue
@@ -418,8 +419,31 @@ def upload():
     else:
         return flask.render_template("upload.html")
 
+def check_replay_trigger(replay):
+
+    map_obj = db.session.get(Map).filter(Map.map_uid == replay.map_uid).first()
+    assert(map_uid)
+
+    best = map_obj.get_best_replay()
+    second = map_obj.get_second_best_replay()
+
+    if replay.filehash != best.filehash:
+        return
+
+    if second.uploader == replay.uploader:
+        return
+
+    settings = db.session.query(UserSettings).filter(UserSettings.user == second.uploader).first()
+    if settings and settings.notifcations_self:
+        notifications.send_notification(app, settings.user, map_obj.map_uid, second, replay)
+
 def create_app():
+
     db.create_all()
+
+    app.config["DISPATCH_SERVER"] = os.environ.get("DISPATCH_SERVER")
+    if app.config["DISPATCH_SERVER"]:
+        app.config["DISPATCH_AUTH"] = (os.environ["DISPATCH_AUTH_USER"], os.environ["DISPATCH_AUTH_PASSWORD"])
 
 if __name__ == "__main__":
 

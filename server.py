@@ -77,6 +77,19 @@ class Map(db.Model):
         delta = datetime.datetime.now() - parsed
         return delta.days
 
+class UserSettings(db.Model):
+
+    __tablename__ = "user_settings"
+
+    user = Column(String, primary_key=True)
+
+    show_tm_2020         = Column(Boolean)
+    show_tmnf            = Column(Boolean)
+    show_tm_2020_current = Column(Boolean)
+
+    notifcations_all     = Column(Boolean)
+    notifcations_self    = Column(Boolean)
+
 class ParsedReplay(db.Model):
 
     __tablename__ = "replays"

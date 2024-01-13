@@ -88,8 +88,68 @@ class UserSettings(db.Model):
     show_tmnf            = Column(Boolean)
     show_tm_2020_current = Column(Boolean)
 
-    notifcations_all     = Column(Boolean)
-    notifcations_self    = Column(Boolean)
+    notifications_all     = Column(Boolean)
+    notifications_self    = Column(Boolean)
+
+@app.route("/update-user-settings", methods=["GET", "POST"])
+def update_user_settings():
+
+    user = flask.request.headers.get("X-Forwarded-Preferred-Username")
+    user_helper = user or "anonymous"
+
+    settings = db.session.query(UserSettings).filter(UserSettings.user==user_helper).first()
+
+    # handle new settings #/
+    if not settings:
+        settings = UserSettings(user=user_helper, show_tm_2020=False, show_tmnf=False,
+                                    show_tm_2020_current=True, notifications_self=True,
+                                    notifications_all=False)
+        db.session.add(settings)
+        db.session.commit()
+        settings = db.session.query(UserSettings).fitler(UserSettings.user==user_helper).first()
+
+
+    if flask.request.method == "GET":
+
+        key = flask.request.args.get("key")
+
+        # some sanity checks #
+        if not key:
+            return ("key missing in args", 422)
+        if key == "user" or key.startswith("_") or "sql" in key:
+            return ("key {} is not allowed".format(key), 422)
+
+        # return attribute #
+        return (str(getattr(settings, key)), 200)
+
+    elif flask.request.method == "POST":
+        json_dict = flask.request.json
+        key_value_list = json_dict.get("payload")
+
+        if not key_value_list:
+            return ("'payload' field empty", 422)
+
+        for el in key_value_list:
+
+            key = el.get("key")
+            value = el.get("value")
+
+            if key == "user" or key.startswith("_") or "sql" in key:
+                return ("key {} is not allowed".format(key), 422)
+
+            if key is None or value is None:
+                return ("element in payload list does not contain key and value", 422)
+          
+            try:
+                getattr(settings, key)
+                setattr(settings, key, bool(value))
+                db.session.merge(settings)
+                db.session.commit()
+                return ("", 204)
+            except AttributeError:
+                return ("key {} not part of user settings".format(key), 422)
+    else:
+        raise AssertionError("Unsupported Method: {}".format(flask.request.method))
 
 class ParsedReplay(db.Model):
 
@@ -436,7 +496,7 @@ def check_replay_trigger(replay):
         return
 
     settings = db.session.query(UserSettings).filter(UserSettings.user == second.uploader).first()
-    if settings and settings.notifcations_self:
+    if settings and settings.notifications_self:
         notifications.send_notification(app, settings.user, map_obj.map_uid, second, replay)
 
 def create_app():

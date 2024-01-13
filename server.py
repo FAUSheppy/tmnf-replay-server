@@ -10,6 +10,7 @@ import datetime
 
 from pygbx import Gbx, GbxType
 import tm2020parser
+import notifications
 
 import sqlalchemy
 from sqlalchemy import Column, Integer, String, Boolean, or_, and_, asc, desc
@@ -421,11 +422,12 @@ def upload():
 
 def check_replay_trigger(replay):
 
-    map_obj = db.session.get(Map).filter(Map.map_uid == replay.map_uid).first()
-    assert(map_uid)
-
+    map_obj = db.session.query(Map).filter(Map.map_uid == replay.map_uid).first()
     best = map_obj.get_best_replay()
     second = map_obj.get_second_best_replay()
+
+    if not second:
+        return
 
     if replay.filehash != best.filehash:
         return

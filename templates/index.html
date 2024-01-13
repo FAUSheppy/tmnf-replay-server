@@ -4,17 +4,19 @@
 <body>
     {% include "upload-button.html" %}
 
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="show_tm_2020">
-        <label class="form-check-label" for="show_tm_2020">Show All TM2020</label>
-    </div>
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="show_tmnf">
-        <label class="form-check-label" for="show_tmnf">Show All TMNF</label>
-    </div>
-    <div class="form-check form-switch">
-        <input class="form-check-input" type="checkbox" role="switch" id="notifications_self">
-        <label class="form-check-label" for="notifications_self">Send notifcations</label>
+    <div class="user-settings">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="show_tm_2020">
+            <label class="form-check-label" for="show_tm_2020">Show All TM2020</label>
+        </div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="show_tmnf">
+            <label class="form-check-label" for="show_tmnf">Show All TMNF</label>
+        </div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="notifications_self">
+            <label class="form-check-label" for="notifications_self">Send notifcations</label>
+        </div>
     </div>
 
     <script src="/static/user_settings.js" defer></script>

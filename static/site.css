@@ -27,6 +27,15 @@ table{
     border-color: transparent;
 }
 
+.user-settings{
+    display: inline-flex;
+    color: white;
+}
+
+.form-check{
+    margin-right: 15px;
+}
+
 .m-auto{
     margin: auto;
 }

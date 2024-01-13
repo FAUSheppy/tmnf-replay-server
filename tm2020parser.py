@@ -5,6 +5,41 @@ import hashlib
 import pygbx
 import xmltodict
 
+def get_latest_season_from_maps(maps):
+    '''Determine the latest season in DB'''
+
+    order = ["Winter", "Spring", "Summer", "Fall"]
+
+    max_year = 0
+    max_season = "Winter"
+
+    if not maps:
+        return
+
+    for m in maps:
+        splitted = m.map_uid.split(" ")
+
+        # not a campain map #
+        if len(splitted) < 3:
+            return
+
+        season = splitted[0]
+        year = splitted[1]
+
+        # also not a campaing map #
+        if not season in order:
+            return
+        try:
+            year = int(year)
+        except ValueError:
+            return
+
+        if year > max_year or year == max_year and order.index(season) >= order.index(max_season):
+            max_year = year
+            max_season = season
+
+    return "{} {}".format(max_season, max_year)
+
 class GhostWrapper():
 
     def __init__(self, fullpath, uploader):

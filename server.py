@@ -397,17 +397,24 @@ def mapnames():
     '''Index Location'''
 
     # TODO list by user
-    player = flask.request.headers.get("X-Forwarded-Preferred-Username")
+    player = flask.request.headers.get("X-Forwarded-Preferred-Username") or "anonymous"
     maps_query = db.session.query(Map).order_by(asc(Map.mapname))
 
     # limit leaderboard to game #
-    game = flask.request.args.get("game")
-    if game == "tm2020":
-        maps_query = maps_query.filter(Map.game=="tm2020")
-    elif game=="tmnf":
-        maps_query = maps_query.filter(Map.game!="tm2020")
-    else:
-        pass
+    settings = db.session.query(UserSettings).filter(UserSettings.user==player).first()
+    if settings:
+        if not settings.show_tm_2020 and not settings.show_tmnf:
+            maps_query = maps_query.filter(Map.game=="tm2020")
+            latest_season = tm2020parser.get_latest_season_from_maps(maps_query.all())
+            # handle no replays #
+            if latest_season:
+                maps_query = maps_query.filter(Map.map_uid.like("{}%".format(latest_season)))
+        elif settings.show_tm_2020 and not settings.show_tmnf:
+            maps_query = maps_query.filter(Map.game=="tm2020")
+        elif not settings.show_tm_2020 and settings.show_tmnf:
+            maps_query = maps_query.filter(Map.game=="tmnf")
+        else:
+            pass
 
     maps = maps_query.all()
 

@@ -32,14 +32,16 @@ function submit(e){
     }
 
     const s = e.target
-    console.log(s)
     const json_data = JSON.stringify({ payload : [ { key : s.id, value : s.checked } ] })
-    console.log(json_data)
     fetch("/update-user-settings", { 
                 method: "POST",
                 credentials: "include",
                 headers: {'Content-Type': 'application/json'},
                 body: json_data
             }
-    ).then(response => {})
+    ).then(response => {
+        if(s.id.startsWith("show")){
+            window.location.reload()
+        }
+    })
 }

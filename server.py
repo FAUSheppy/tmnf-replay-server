@@ -438,7 +438,12 @@ def check_replay_trigger(replay):
         notifications.send_notification(app, settings.user, map_obj.map_uid, second, replay)
 
 def create_app():
+
     db.create_all()
+
+    app.config["DISPATCH_SERVER"] = os.environ.get("DISPATCH_SERVER")
+    if app.config["DISPATCH_SERVER"]:
+        app.config["DISPATCH_AUTH"] = (os.environ["DISPATCH_AUTH_USER"], os.environ["DISPATCH_AUTH_PASSWORD"])
 
 if __name__ == "__main__":
 

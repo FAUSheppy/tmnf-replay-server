@@ -6,6 +6,9 @@ def send_notification(app, target_user, mapname, old_replay, new_replay):
 
     url =  app.config["DISPATCH_SERVER"]
 
+    if not url:
+        return
+
     # send to event dispatcher #
     message = "Trackmania: Record broken on {}".format(mapname)
     message += "Old time: {}".format(old_replay.get_human_readable_time())

@@ -81,6 +81,8 @@ class UserSettings(db.Model):
 
     __tablename__ = "user_settings"
 
+    user = Column(String, primary_key=True)
+
     show_tm_2020         = Column(Boolean)
     show_tmnf            = Column(Boolean)
     show_tm_2020_current = Column(Boolean)
@@ -114,7 +116,7 @@ class ParsedReplay(db.Model):
         else:
             return self.login
 
-    def get_human_readable_time(self):
+    def get_human_readable_time(self, thousands=False):
         t = datetime.timedelta(microseconds=self.race_time*1000)
         t_string = str(t)
         if t.seconds < 60*60:
@@ -419,11 +421,21 @@ def upload():
 
 def check_replay_trigger(replay):
 
-    # get replay rank
-    # get second best
-    # uploader = second best owner
-    # check notifications on
-    # request to dispatch
+    map_obj = db.session.get(Map).filter(Map.map_uid == replay.map_uid).first()
+    assert(map_uid)
+
+    best = map_obj.get_best_replay()
+    second = map_obj.get_second_best_replay()
+
+    if replay.filehash != best.filehash:
+        return
+
+    if second.uploader == replay.uploader:
+        return
+
+    settings = db.session.query(UserSettings).filter(UserSettings.user == second.uploader).first()
+    if settings and settings.notifcations_self:
+        notifications.send_notification(app, settings.user, map_obj.map_uid, second, replay)
 
 def create_app():
     db.create_all()

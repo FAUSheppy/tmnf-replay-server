@@ -183,7 +183,10 @@ class ParsedReplay(db.Model):
         if t.seconds < 60*60:
             t_string =  t_string[2:]
         if t.microseconds != 0:
-            return t_string[:-4]
+            if self.game == "tmnf":
+                return t_string[:-4]
+            else:
+                return t_string[:-3]
         return t_string + ".00"
 
     def __repr__(self):

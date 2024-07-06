@@ -515,7 +515,7 @@ def create_app():
 
     app.config["DISPATCH_SERVER"] = os.environ.get("DISPATCH_SERVER")
     if app.config["DISPATCH_SERVER"]:
-        app.config["DISPATCH_AUTH"] = (os.environ["DISPATCH_AUTH_USER"], os.environ["DISPATCH_AUTH_PASSWORD"])
+        app.config["DISPATCH_TOKEN"] = os.environ["DISPATCH_TOKEN"]
 
 if __name__ == "__main__":
 

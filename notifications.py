@@ -17,9 +17,9 @@ def send_notification(app, target_user, mapname, old_replay, new_replay):
 
     payload = { "users": [target_user], "msg" : message }
 
-
-    r = requests.post(app.config["DISPATCH_SERVER"] + "/smart-send",
-                    json=payload, auth=app.config["DISPATCH_AUTH"])
+    url_and_token = "/smart-send?dispatch-access-token={}".format(app.config["DISPATCH_TOKEN"])
+    r = requests.post(app.config["DISPATCH_SERVER"] + url_and_token, json=payload)
 
     if not r.ok:
-        print("Error handing off notification to dispatch ({})".format(r.status_code), file=sys.stderr)
+        msg = "Error handing off notification to dispatch ({} {})".format(r.status_code, r.content)
+        print(msg, file=sys.stderr)

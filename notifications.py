@@ -23,3 +23,5 @@ def send_notification(app, target_user, mapname, old_replay, new_replay):
     if not r.ok:
         msg = "Error handing off notification to dispatch ({} {})".format(r.status_code, r.content)
         print(msg, file=sys.stderr)
+    else:
+        print("Handed off notification for {} to dispatch".format(target_user), file=sys.stderr)

@@ -15,7 +15,11 @@ def send_notification(app, target_user, mapname, old_replay, new_replay):
     message += "New time: {}\n".format(new_replay.get_human_readable_time())
     message += "\nby {}".format(new_replay.clean_login())
 
-    payload = { "users": [target_user], "msg" : message }
+    payload = {
+        "users": [target_user],
+        "msg" : message,
+        "method" : "any"
+    }
 
     url_and_token = "/smart-send?dispatch-access-token={}".format(app.config["DISPATCH_TOKEN"])
     r = requests.post(app.config["DISPATCH_SERVER"] + url_and_token, json=payload)

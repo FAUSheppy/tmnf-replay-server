@@ -413,7 +413,7 @@ def ranks():
 
 
 @app.route("/map-info")
-def list():
+def map_info():
     player = flask.request.headers.get("X-Forwarded-Preferred-Username")
     header_col = ["Player", "Time", "Date", "Replay"]
     map_uid = flask.request.args.get("map_uid")

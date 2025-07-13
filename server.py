@@ -22,6 +22,31 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLITE_LOCATION") or "sqlite:///sqlite.db"
 db = SQLAlchemy(app)
 
+SEASON_ORDERING = ["Spring", "Summer", "Fall", "Winter"]
+def filter_for_current_season(maps):
+
+    maps = list(maps)
+
+    year = str(datetime.datetime.now().year)
+
+    season = 3
+    for m in maps:
+
+        if year not in m.mapname:
+            continue
+        else:
+            for i, season_name in enumerate(SEASON_ORDERING):
+                print(i, season_name, m.mapname)
+                if season_name in m.mapname:
+                    season = i
+                    print(season)
+
+    print(SEASON_ORDERING[season])
+    print(maps)
+    maps_season = list(filter(lambda m: SEASON_ORDERING[season] in m.mapname, maps))
+    print(maps_season)
+    return maps_season
+
 class Map(db.Model):
 
     __tablename__ = "maps"
@@ -424,6 +449,9 @@ def mapnames():
     # FIXME better handling for unwanted maps #
     allowed = ("A", "B", "C", "D", "E", "Fall", "Winter", "Spring", "Summer")
     maps_filtered = filter(lambda m: m.mapname.startswith(allowed), maps)
+
+    if settings.show_tm_2020_current:
+        maps_filtered = filter_for_current_season(maps_filtered)
 
     return flask.render_template("index.html", maps=maps_filtered, player=player)
 

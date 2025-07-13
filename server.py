@@ -164,7 +164,7 @@ def update_user_settings():
 
             if key is None or value is None:
                 return ("element in payload list does not contain key and value", 422)
-          
+
             try:
                 getattr(settings, key)
                 setattr(settings, key, bool(value))
@@ -285,7 +285,7 @@ class DataTable():
         if map_uid:
             print("Filter for map: {}".format(map_uid))
             query = query.filter(ParsedReplay.map_uid == map_uid)
-            
+
         total = query.count()
         if self.searchValue:
 
@@ -337,7 +337,7 @@ class DataTable():
 
 def _extracted_login_from_file(fullpath):
     '''Extract a login from a tmnf 2020 replay manually'''
-    
+
     # TODO fix underscores in filenames #
     if "its_a_sheppy" in fullpath:
         login_from_filename = "its_a_sheppy"
@@ -369,7 +369,7 @@ def replay_from_path(fullpath, uploader=None):
                         upload_dt=ghost.upload_dt,
                         cp_times=ghost.cp_times,
                         game=ghost.game)
-    
+
     # build database map object from replay #
     m = Map(map_uid=replay.map_uid, mapname=replay.map_uid, game=replay.game)
 

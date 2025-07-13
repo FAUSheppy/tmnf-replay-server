@@ -22,29 +22,25 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLITE_LOCATION") or "sqlite:///sqlite.db"
 db = SQLAlchemy(app)
 
-SEASON_ORDERING = ["Spring", "Summer", "Fall", "Winter"]
+SEASON_ORDERING = ["Winter", "Spring", "Summer", "Fall"]
 def filter_for_current_season(maps):
 
     maps = list(maps)
 
     year = str(datetime.datetime.now().year)
 
-    season = 3
+    season = 0
     for m in maps:
 
         if year not in m.mapname:
             continue
         else:
             for i, season_name in enumerate(SEASON_ORDERING):
-                print(i, season_name, m.mapname)
-                if season_name in m.mapname:
+                if season_name in m.mapname and i > season:
                     season = i
-                    print(season)
 
-    print(SEASON_ORDERING[season])
-    print(maps)
-    maps_season = list(filter(lambda m: SEASON_ORDERING[season] in m.mapname, maps))
-    print(maps_season)
+    filter_func = lambda m: SEASON_ORDERING[season] in m.mapname and year in m.mapname
+    maps_season = list(filter(filter_func, maps))
     return maps_season
 
 class Map(db.Model):

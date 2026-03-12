@@ -17,6 +17,9 @@ import sqlalchemy
 from sqlalchemy import Column, Integer, String, Boolean, or_, and_, asc, desc
 from flask_sqlalchemy import SQLAlchemy
 
+import os
+from flask import send_from_directory, abort
+
 app = flask.Flask("TM Friends Replay Server")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -222,7 +225,7 @@ class ParsedReplay(db.Model):
     def to_dict(self):
         d = dict()
         d.update({ "login" : self.login })
-        d.update({ "filehash" : self.login })
+        d.update({ "filehash" : self.filehash })
         d.update({ "race_time" : self.get_human_readable_time() })
         d.update({ "filepath" : self.filepath })
         d.update({ "upload_dt" : self.upload_dt })
@@ -596,6 +599,31 @@ def check_replay_trigger(replay):
     settings = db.session.query(UserSettings).filter(UserSettings.user == second.uploader).first()
     if settings and settings.notifications_self:
         notifications.send_notification(app, settings.user, map_obj.map_uid, second, replay)
+
+@app.route("/downloads/<path:filename>")
+def downloads(filename):
+
+    # Ensure directory exists
+    os.makedirs("uploads", exist_ok=True)
+    local_path = os.path.join("uploads/", filename)
+
+    if not os.path.isfile(local_path):
+        print(f"{local_path} missing, attempting to retrieve from S3")
+        s3 = get_s3_client()
+
+        try:
+            s3.download_file(
+                S3_BUCKET,
+                f"{filename}",
+                os.path.join("uploads/", filename)
+            )
+
+        except Exception:
+            print(f"{filename} not found on S3")
+            abort(404)
+
+    print(f"Sending {filename}")
+    return send_from_directory("uploads/", filename)
 
 def create_app():
 

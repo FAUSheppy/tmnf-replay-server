@@ -5,3 +5,4 @@ werkzeug
 xmltodict
 requests
 psycopg2-binary
+boto3

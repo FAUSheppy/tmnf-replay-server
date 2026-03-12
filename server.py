@@ -9,6 +9,7 @@ import json
 import datetime
 
 from pygbx import Gbx, GbxType
+import pygbx
 import tm2020parser
 import notifications
 
@@ -541,7 +542,7 @@ def upload():
             try:
                 replay = replay_from_path(tmp_path, uploader=uploader)
 
-                new_basename = f"{replay.uploader}_{replay.filehash}_{fname}"
+                new_basename = f"{replay.filehash}"
                 fullpath = os.path.join("uploads", new_basename)
 
                 os.rename(tmp_path, fullpath)
@@ -549,8 +550,7 @@ def upload():
                 replay.filepath = fullpath
 
                 if s3_enabled():
-                    s3_key = upload_to_s3(fullpath, replay)
-                    replay.filepath = s3_key
+                    s3_key = upload_to_s3(new_basename, replay)
                     os.remove(fullpath)
 
                 db.session.add(replay)
@@ -560,6 +560,9 @@ def upload():
 
             except ValueError as e:
                 results.append((fname, str(e)))
+                continue
+            except pygbx.Gbx as e:
+                print(f"Failed to load Replay: {e}")
                 continue
 
             except sqlalchemy.exc.IntegrityError as e:

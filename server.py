@@ -551,7 +551,7 @@ def upload():
                 replay.filepath = fullpath
 
                 if s3_enabled():
-                    s3_key = upload_to_s3(new_basename, replay)
+                    s3_key = upload_to_s3(fullpath, replay)
                     os.remove(fullpath)
 
                 db.session.add(replay)

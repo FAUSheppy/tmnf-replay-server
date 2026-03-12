@@ -561,7 +561,7 @@ def upload():
             except ValueError as e:
                 results.append((fname, str(e)))
                 continue
-            except pygbx.Gbx as e:
+            except pygbx.Gbx.GbxLoadError as e:
                 print(f"Failed to load Replay: {e}")
                 continue
 

@@ -21,6 +21,8 @@ app = flask.Flask("TM Friends Replay Server")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DB_URL") or "sqlite:///sqlite.db"
 app.config["AUTH_HEADER"] = os.environ.get("AUTH_HEADER") or "X-Forwarded-Preferred-Username"
+
+S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL")
 db = SQLAlchemy(app)
 
 SEASON_ORDERING = ["Winter", "Spring", "Summer", "Fall"]
@@ -499,9 +501,17 @@ def s3_enabled():
         S3_BUCKET
     ])
 
+def get_s3_client():
+    kwargs = {}
+
+    if S3_ENDPOINT_URL:
+        kwargs["endpoint_url"] = S3_ENDPOINT_URL
+
+    return boto3.client("s3", **kwargs)
+
 
 def upload_to_s3(local_path, replay):
-    s3 = boto3.client("s3")
+    s3 = get_s3_client()
     key = f"{replay.uploader}/{replay.filehash}/{os.path.basename(local_path)}"
     s3.upload_file(local_path, S3_BUCKET, key)
     return key

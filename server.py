@@ -222,7 +222,7 @@ class ParsedReplay(db.Model):
     def to_dict(self):
         d = dict()
         d.update({ "login" : self.login })
-        d.update({ "filepath" : self.login })
+        d.update({ "filehash" : self.login })
         d.update({ "race_time" : self.get_human_readable_time() })
         d.update({ "filepath" : self.filepath })
         d.update({ "upload_dt" : self.upload_dt })
@@ -514,7 +514,7 @@ def get_s3_client():
 
 def upload_to_s3(local_path, replay):
     s3 = get_s3_client()
-    key = f"{replay.uploader}/{replay.filehash}/{os.path.basename(local_path)}"
+    key = f"{replay.filehash}"
     s3.upload_file(local_path, S3_BUCKET, key)
     return key
 

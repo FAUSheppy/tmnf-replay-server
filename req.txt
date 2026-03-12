@@ -4,3 +4,4 @@ pygbx
 werkzeug
 xmltodict
 requests
+psycopg2-binary

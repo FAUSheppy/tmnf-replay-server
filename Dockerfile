@@ -3,7 +3,6 @@ FROM python:3-alpine
 RUN apk add --no-cache curl lzo-dev gcc libc-dev
 
 WORKDIR /app
-COPY ./ .
 
 RUN pip install --no-cache-dir -U pip
 RUN pip install --no-cache-dir --break-system-packages waitress
@@ -11,6 +10,7 @@ RUN pip install --no-cache-dir --break-system-packages waitress
 COPY req.txt .
 RUN pip install --no-cache-dir -r req.txt
 
+COPY ./ .
 RUN ln -s /app/uploads/ /app/static/uploads
 
 EXPOSE 5000/tcp

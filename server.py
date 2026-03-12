@@ -222,6 +222,7 @@ class ParsedReplay(db.Model):
     def to_dict(self):
         d = dict()
         d.update({ "login" : self.login })
+        d.update({ "filepath" : self.login })
         d.update({ "race_time" : self.get_human_readable_time() })
         d.update({ "filepath" : self.filepath })
         d.update({ "upload_dt" : self.upload_dt })

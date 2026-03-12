@@ -475,7 +475,7 @@ def openinfo():
 def source(map_uid):
 
     # path = map_uid
-    dt = DataTable(flask.request.form.to_dict(), ["login", "race_time", "upload_dt", "filepath" ])
+    dt = DataTable(flask.request.form.to_dict(), ["login", "race_time", "upload_dt", "filehash" ])
     jsonDict = dt.get(map_uid=map_uid)
     return flask.Response(json.dumps(jsonDict), 200, mimetype='application/json')
 
@@ -561,7 +561,7 @@ def upload():
             except ValueError as e:
                 results.append((fname, str(e)))
                 continue
-            except pygbx.Gbx.GbxLoadError as e:
+            except pygbx.GbxLoadError as e:
                 print(f"Failed to load Replay: {e}")
                 continue
 

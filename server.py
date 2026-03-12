@@ -19,7 +19,8 @@ from flask_sqlalchemy import SQLAlchemy
 app = flask.Flask("TM Friends Replay Server")
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLITE_LOCATION") or "sqlite:///sqlite.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DB_URL") or "sqlite:///sqlite.db"
+app.config["AUTH_HEADER"] = os.environ.get("AUTH_HEADER") or "X-Forwarded-Preferred-Username"
 db = SQLAlchemy(app)
 
 SEASON_ORDERING = ["Winter", "Spring", "Summer", "Fall"]
@@ -115,7 +116,7 @@ class UserSettings(db.Model):
 @app.route("/update-user-settings", methods=["GET", "POST"])
 def update_user_settings():
 
-    user = flask.request.headers.get("X-Forwarded-Preferred-Username")
+    user = flask.request.headers.get(app.config["AUTH_HEADER"])
     user_helper = user or "anonymous"
 
     settings = db.session.query(UserSettings).filter(UserSettings.user==user_helper).first()
@@ -339,11 +340,13 @@ def _extracted_login_from_file(fullpath):
         login_from_filename = "its_a_sheppy"
     else:
         login_from_filename = os.path.basename(fullpath).split("_")[0]
+
     with open(fullpath, "rb") as f:
         content = f.read()
         decoded_string = content.decode("ascii", errors="ignore")
         if login_from_filename not in decoded_string:
             raise ValueError("Login indicated by filename does not match login in file")
+
     return login_from_filename
 
 
@@ -410,7 +413,7 @@ def ranks():
 
 @app.route("/map-info")
 def map_info():
-    player = flask.request.headers.get("X-Forwarded-Preferred-Username")
+    player = flask.request.headers.get(app.config["AUTH_HEADER"])
     header_col = ["Player", "Time", "Date", "Replay"]
     map_uid = flask.request.args.get("map_uid")
     return flask.render_template("map-info.html", header_col=header_col, map_uid=map_uid,
@@ -421,7 +424,7 @@ def mapnames():
     '''Index Location'''
 
     # TODO list by user
-    player = flask.request.headers.get("X-Forwarded-Preferred-Username") or "anonymous"
+    player = flask.request.headers.get(app.config["AUTH_HEADER"]) or "anonymous"
     maps_query = db.session.query(Map).order_by(asc(Map.mapname))
 
     # limit leaderboard to game #
@@ -446,7 +449,7 @@ def mapnames():
     allowed = ("A", "B", "C", "D", "E", "Fall", "Winter", "Spring", "Summer")
     maps_filtered = filter(lambda m: m.mapname.startswith(allowed), maps)
 
-    if settings.show_tm_2020_current:
+    if settings and settings.show_tm_2020_current:
         maps_filtered = filter_for_current_season(maps_filtered)
 
     return flask.render_template("index.html", maps=maps_filtered, player=player)
@@ -481,33 +484,80 @@ def index_source(map_uid):
     jsonDict = dt.get(map_uid=map_uid)
     return flask.Response(json.dumps(jsonDict), 200, mimetype='application/json')
 
-@app.route("/upload", methods = ['GET', 'POST'])
+import os
+import boto3
+import flask
+import werkzeug
+import sqlalchemy
+
+S3_BUCKET = os.getenv("S3_BUCKET")
+
+def s3_enabled():
+    return all([
+        os.getenv("AWS_ACCESS_KEY_ID"),
+        os.getenv("AWS_SECRET_ACCESS_KEY"),
+        S3_BUCKET
+    ])
+
+
+def upload_to_s3(local_path, replay):
+    s3 = boto3.client("s3")
+    key = f"{replay.uploader}/{replay.filehash}/{os.path.basename(local_path)}"
+    s3.upload_file(local_path, S3_BUCKET, key)
+    return key
+
+
+@app.route("/upload", methods=['GET', 'POST'])
 def upload():
 
     results = []
 
-    uploader = flask.request.headers.get("X-Forwarded-Preferred-Username")
+    uploader = flask.request.headers.get(app.config["AUTH_HEADER"])
+
     if flask.request.method == 'POST':
-        #f = flask.request.files['file']
+
         f_list = flask.request.files.getlist("file[]")
+
         for f_storage in f_list:
+
             fname = werkzeug.utils.secure_filename(f_storage.filename)
-            fullpath = os.path.join("uploads/", fname)
-            f_storage.save(fullpath)
+
+            os.makedirs("uploads", exist_ok=True)
+
+            # temporary save
+            tmp_path = os.path.join("uploads", fname)
+            f_storage.save(tmp_path)
+
             try:
-                replay = replay_from_path(fullpath, uploader=uploader)
+                replay = replay_from_path(tmp_path, uploader=uploader)
+
+                new_basename = f"{replay.uploader}_{replay.filehash}_{fname}"
+                fullpath = os.path.join("uploads", new_basename)
+
+                os.rename(tmp_path, fullpath)
+
+                replay.filepath = fullpath
+
+                if s3_enabled():
+                    s3_key = upload_to_s3(fullpath, replay)
+                    replay.filepath = s3_key
+                    os.remove(fullpath)
+
                 db.session.add(replay)
                 db.session.commit()
+
                 check_replay_trigger(replay)
+
             except ValueError as e:
-                results += [(fname, str(e))]
+                results.append((fname, str(e)))
                 continue
+
             except sqlalchemy.exc.IntegrityError as e:
-                results += [(fname, str(e.args))]
+                results.append((fname, str(e.args)))
                 db.session.rollback()
                 continue
 
-            results += [(fname, None)]
+            results.append((fname, None))
 
         return flask.render_template("upload-post.html", results=results)
 
@@ -537,6 +587,7 @@ def create_app():
 
     db.create_all()
 
+    print(f"S3 enabled: {s3_enabled()} (if true will only write tmp/cache to disk")
     app.config["DISPATCH_SERVER"] = os.environ.get("DISPATCH_SERVER")
     if app.config["DISPATCH_SERVER"]:
         app.config["DISPATCH_TOKEN"] = os.environ["DISPATCH_TOKEN"]

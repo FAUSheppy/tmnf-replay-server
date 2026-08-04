@@ -50,74 +50,121 @@ def filter_for_current_season(maps):
     maps_season = list(filter(filter_func, maps))
     return maps_season
 
-class Map(db.Model):
+from sqlalchemy import Column, String, Integer, Boolean, ForeignKey, Index, or_, func
+from sqlalchemy.orm import relationship, selectinload
 
+
+class Map(db.Model):
     __tablename__ = "maps"
 
     map_uid = Column(String, primary_key=True)
     mapname = Column(String)
-    game    = Column(String)
+    game = Column(String)
+
+    replays = relationship(
+        "ParsedReplay",
+        primaryjoin="Map.map_uid == foreign(ParsedReplay.map_uid)",
+        order_by="ParsedReplay.race_time",
+        lazy="selectin",
+        viewonly=True,
+    )
 
     def get_best_replay(self):
-
-        q = db.session.query(ParsedReplay).filter(ParsedReplay.map_uid == self.map_uid)
-        r = q.order_by(asc(ParsedReplay.race_time)).first()
-        return r
+        return self.replays[0] if self.replays else None
 
     def get_best_replay_for_player(self, player):
-
-        q = db.session.query(ParsedReplay).filter(ParsedReplay.map_uid == self.map_uid)
-        q = q.filter(or_(ParsedReplay.uploader == player, ParsedReplay.login == player))
-        r = q.order_by(asc(ParsedReplay.race_time)).first()
-        return r
+        return next((r for r in self.replays if r.uploader == player or r.login == player), None)
 
     def get_second_best_replay(self):
-
-        q = db.session.query(ParsedReplay).filter(ParsedReplay.map_uid == self.map_uid)
-        q = q.filter(ParsedReplay.login != self.get_best_replay().login)
-        results = q.order_by(asc(ParsedReplay.race_time)).all()
-        if not results or len(results) < 1:
-            return None
-        return results[0] # because first is already filtered out by login filter
+        best = self.get_best_replay()
+        return next((r for r in self.replays if best and r.login != best.login), None)
 
     def get_record_replay_percent_diff(self):
-
         best = self.get_best_replay()
         second = self.get_second_best_replay()
 
-        if not second:
+        if not best or not second:
             return ""
-        elif best.race_time == second.race_time:
-            return "Tied by {}".format(second.clean_login())
-        else:
-            dif = second.race_time - best.race_time
-            percent = dif/best.race_time*100
-            return "+ {:.2f}% by {}".format(percent, second.clean_login())
+        if best.race_time == second.race_time:
+            return f"Tied by {second.clean_login()}"
+
+        return f"+ {(second.race_time - best.race_time) / best.race_time * 100:.2f}% by {second.clean_login()}"
 
     def get_best_replay_repr(self):
-        r = self.get_best_replay()
-        if not r:
-            return "-"
-        return str(r)
+        return str(self.get_best_replay()) if self.get_best_replay() else "-"
 
     def get_best_replay_age(self):
+        best = self.get_best_replay()
+        if not best:
+            return None
 
-        parsed = datetime.datetime.fromisoformat(self.get_best_replay().upload_dt)
-        delta = datetime.datetime.now() - parsed
-        return delta.days
+        return (datetime.datetime.now() - datetime.datetime.fromisoformat(best.upload_dt)).days
+
 
 class UserSettings(db.Model):
-
     __tablename__ = "user_settings"
 
     user = Column(String, primary_key=True)
 
-    show_tm_2020         = Column(Boolean)
-    show_tmnf            = Column(Boolean)
+    show_tm_2020 = Column(Boolean)
+    show_tmnf = Column(Boolean)
     show_tm_2020_current = Column(Boolean)
 
-    notifications_all     = Column(Boolean)
-    notifications_self    = Column(Boolean)
+    notifications_all = Column(Boolean)
+    notifications_self = Column(Boolean)
+
+
+class ParsedReplay(db.Model):
+    __tablename__ = "replays"
+
+    filehash = Column(String, primary_key=True)
+    ghost_id = Column(Integer)
+    race_time = Column(Integer)
+    uploader = Column(String)
+    filepath = Column(String)
+    upload_dt = Column(String)
+    map_uid = Column(String, ForeignKey("maps.map_uid"), index=True)
+    login = Column(String)
+    cp_times = Column(String)
+
+    __table_args__ = (
+        Index("ix_replays_map_uid_race_time", "map_uid", "race_time"),
+        Index("ix_replays_map_uid_login_race_time", "map_uid", "login", "race_time"),
+    )
+
+
+    def clean_login(self):
+        if "/" in self.login:
+            return self.login.split("/")[0]
+        else:
+            return self.login
+
+    def get_human_readable_time(self):
+        t = datetime.timedelta(microseconds=self.race_time*1000)
+        t_string = str(t)
+        if t.seconds < 60*60:
+            t_string =  t_string[2:]
+        if t.microseconds != 0:
+            if self.game == "tmnf":
+                return t_string[:-4]
+            else:
+                return t_string[:-3]
+        return t_string + ".00"
+
+    def __repr__(self):
+        return "{time} on {map_n} by {login}".format(
+                    time=self.get_human_readable_time(),
+                    map_n=self.map_uid, login=self.login)
+
+    def to_dict(self):
+        d = dict()
+        d.update({ "login" : self.login })
+        d.update({ "filehash" : self.filehash })
+        d.update({ "race_time" : self.get_human_readable_time() })
+        d.update({ "filepath" : self.filepath })
+        d.update({ "upload_dt" : self.upload_dt })
+        return d
+
 
 @app.route("/update-user-settings", methods=["GET", "POST"])
 def update_user_settings():
@@ -178,58 +225,6 @@ def update_user_settings():
                 return ("key {} not part of user settings".format(key), 422)
     else:
         raise AssertionError("Unsupported Method: {}".format(flask.request.method))
-
-class ParsedReplay(db.Model):
-
-    __tablename__ = "replays"
-
-    filehash    = Column(String, primary_key=True)
-
-    ghost_id    = Column(Integer)
-    race_time   = Column(Integer)
-
-    uploader    = Column(String)
-    filepath    = Column(String)
-    upload_dt   = Column(String)
-
-    map_uid     = Column(String) # ghost_uid
-    login       = Column(String)
-    cp_times    = Column(String)
-
-    login_uid_tm2020 = Column(String)
-    game = Column(String)
-
-    def clean_login(self):
-        if "/" in self.login:
-            return self.login.split("/")[0]
-        else:
-            return self.login
-
-    def get_human_readable_time(self):
-        t = datetime.timedelta(microseconds=self.race_time*1000)
-        t_string = str(t)
-        if t.seconds < 60*60:
-            t_string =  t_string[2:]
-        if t.microseconds != 0:
-            if self.game == "tmnf":
-                return t_string[:-4]
-            else:
-                return t_string[:-3]
-        return t_string + ".00"
-
-    def __repr__(self):
-        return "{time} on {map_n} by {login}".format(
-                    time=self.get_human_readable_time(),
-                    map_n=self.map_uid, login=self.login)
-
-    def to_dict(self):
-        d = dict()
-        d.update({ "login" : self.login })
-        d.update({ "filehash" : self.filehash })
-        d.update({ "race_time" : self.get_human_readable_time() })
-        d.update({ "filepath" : self.filepath })
-        d.update({ "upload_dt" : self.upload_dt })
-        return d
 
 class DataTable():
 

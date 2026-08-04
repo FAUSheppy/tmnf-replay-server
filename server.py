@@ -623,7 +623,13 @@ def downloads(filename):
             abort(404)
 
     print(f"Sending {filename}")
-    return send_from_directory("uploads/", filename)
+
+    replay = db.session.query(ParsedReplay).filter(ParsedReplay.filehash==filename).first()
+
+    return send_from_directory("uploads/",
+                filename,
+                as_attachment=True,
+                download_name=os.path.basename(replay.filepath))
 
 def create_app():
 

@@ -64,20 +64,18 @@ class Map(db.Model):
     replays = relationship(
         "ParsedReplay",
         primaryjoin="Map.map_uid == foreign(ParsedReplay.map_uid)",
-        order_by="ParsedReplay.race_time",
-        lazy="selectin",
+        lazy="raise",
         viewonly=True,
     )
 
     def get_best_replay(self):
-        return self.replays[0] if self.replays else None
-
-    def get_best_replay_for_player(self, player):
-        return next((r for r in self.replays if r.uploader == player or r.login == player), None)
+        return getattr(self, "_best_replay", None)
 
     def get_second_best_replay(self):
-        best = self.get_best_replay()
-        return next((r for r in self.replays if best and r.login != best.login), None)
+        return getattr(self, "_second_best_replay", None)
+
+    def get_best_replay_for_player(self, player):
+        return getattr(self, "_player_best_replay", None)
 
     def get_record_replay_percent_diff(self):
         best = self.get_best_replay()
@@ -91,13 +89,13 @@ class Map(db.Model):
         return f"+ {(second.race_time - best.race_time) / best.race_time * 100:.2f}% by {second.clean_login()}"
 
     def get_best_replay_repr(self):
-        return str(self.get_best_replay()) if self.get_best_replay() else "-"
+        best = self.get_best_replay()
+        return str(best) if best else "-"
 
     def get_best_replay_age(self):
         best = self.get_best_replay()
         if not best:
             return None
-
         return (datetime.datetime.now() - datetime.datetime.fromisoformat(best.upload_dt)).days
 
 
@@ -126,6 +124,8 @@ class ParsedReplay(db.Model):
     map_uid = Column(String, ForeignKey("maps.map_uid"), index=True)
     login = Column(String)
     cp_times = Column(String)
+    game = Column(String)
+    login_uid_tm2020 = Column(String)
 
     __table_args__ = (
         Index("ix_replays_map_uid_race_time", "map_uid", "race_time"),
@@ -334,6 +334,102 @@ class DataTable():
 
         return self.__build(results, total, filtered)
 
+from sqlalchemy.orm import aliased
+
+
+def load_map_replays(maps, player=None):
+    maps = list(maps)
+
+    if not maps:
+        return maps
+
+    map_uids = [m.map_uid for m in maps]
+
+    player_best_ranked = (
+        db.session.query(
+            ParsedReplay.filehash.label("filehash"),
+            func.row_number().over(
+                partition_by=(ParsedReplay.map_uid, ParsedReplay.login),
+                order_by=(ParsedReplay.race_time.asc(), ParsedReplay.filehash.asc()),
+            ).label("player_replay_rank"),
+        )
+        .filter(ParsedReplay.map_uid.in_(map_uids))
+        .subquery()
+    )
+
+    player_best = (
+        db.session.query(ParsedReplay)
+        .join(
+            player_best_ranked,
+            player_best_ranked.c.filehash == ParsedReplay.filehash,
+        )
+        .filter(player_best_ranked.c.player_replay_rank == 1)
+        .subquery()
+    )
+
+    map_ranked = (
+        db.session.query(
+            player_best.c.filehash,
+            func.row_number().over(
+                partition_by=player_best.c.map_uid,
+                order_by=(player_best.c.race_time.asc(), player_best.c.filehash.asc()),
+            ).label("map_rank"),
+        )
+        .subquery()
+    )
+
+    RankedReplay = aliased(ParsedReplay)
+
+    ranked_results = (
+        db.session.query(RankedReplay, map_ranked.c.map_rank)
+        .join(map_ranked, map_ranked.c.filehash == RankedReplay.filehash)
+        .filter(map_ranked.c.map_rank <= 2)
+        .all()
+    )
+
+    ranked_by_map = {}
+
+    for replay, rank in ranked_results:
+        ranked_by_map.setdefault(replay.map_uid, {})[rank] = replay
+
+    personal_by_map = {}
+
+    if player and player != "anonymous":
+        personal_ranked = (
+            db.session.query(
+                ParsedReplay.filehash,
+                func.row_number().over(
+                    partition_by=ParsedReplay.map_uid,
+                    order_by=(ParsedReplay.race_time.asc(), ParsedReplay.filehash.asc()),
+                ).label("personal_rank"),
+            )
+            .filter(
+                ParsedReplay.map_uid.in_(map_uids),
+                or_(
+                    ParsedReplay.uploader == player,
+                    ParsedReplay.login == player,
+                ),
+            )
+            .subquery()
+        )
+
+        personal_results = (
+            db.session.query(ParsedReplay)
+            .join(personal_ranked, personal_ranked.c.filehash == ParsedReplay.filehash)
+            .filter(personal_ranked.c.personal_rank == 1)
+            .all()
+        )
+
+        personal_by_map = {replay.map_uid: replay for replay in personal_results}
+
+    for map_obj in maps:
+        ranked = ranked_by_map.get(map_obj.map_uid, {})
+        map_obj._best_replay = ranked.get(1)
+        map_obj._second_best_replay = ranked.get(2)
+        map_obj._player_best_replay = personal_by_map.get(map_obj.map_uid)
+
+    return maps
+
 def _extracted_login_from_file(fullpath):
     '''Extract a login from a tmnf 2020 replay manually'''
 
@@ -421,40 +517,110 @@ def map_info():
     return flask.render_template("map-info.html", header_col=header_col, map_uid=map_uid,
                                     player=player)
 
+import time
+import time
+
+
 @app.route("/")
 def mapnames():
-    '''Index Location'''
+    started = time.perf_counter()
 
-    # TODO list by user
     player = flask.request.headers.get(app.config["AUTH_HEADER"]) or "anonymous"
-    maps_query = db.session.query(Map).order_by(asc(Map.mapname))
+    settings = db.session.get(UserSettings, player)
 
-    # limit leaderboard to game #
-    settings = db.session.query(UserSettings).filter(UserSettings.user==player).first()
+    after_settings = time.perf_counter()
+
+    maps_query = db.session.query(Map).order_by(Map.mapname.asc())
+
     if settings:
         if not settings.show_tm_2020 and not settings.show_tmnf:
-            maps_query = maps_query.filter(Map.game=="tm2020")
-            latest_season = tm2020parser.get_latest_season_from_maps(maps_query.all())
-            # handle no replays #
-            if latest_season:
-                maps_query = maps_query.filter(Map.map_uid.like("{}%".format(latest_season)))
+            maps_query = maps_query.filter(Map.game == "tm2020")
         elif settings.show_tm_2020 and not settings.show_tmnf:
-            maps_query = maps_query.filter(Map.game=="tm2020")
+            maps_query = maps_query.filter(Map.game == "tm2020")
         elif not settings.show_tm_2020 and settings.show_tmnf:
-            maps_query = maps_query.filter(Map.game=="tmnf")
-        else:
-            pass
+            maps_query = maps_query.filter(Map.game == "tmnf")
 
     maps = maps_query.all()
 
-    # FIXME better handling for unwanted maps #
+    if settings and not settings.show_tm_2020 and not settings.show_tmnf:
+        latest_season = tm2020parser.get_latest_season_from_maps(maps)
+
+        if latest_season:
+            maps = [m for m in maps if m.map_uid.startswith(latest_season)]
+
     allowed = ("A", "B", "C", "D", "E", "Fall", "Winter", "Spring", "Summer")
-    maps_filtered = filter(lambda m: m.mapname.startswith(allowed), maps)
+    maps = [m for m in maps if m.mapname.startswith(allowed)]
 
     if settings and settings.show_tm_2020_current:
-        maps_filtered = filter_for_current_season(maps_filtered)
+        maps = filter_for_current_season(maps)
 
-    return flask.render_template("index.html", maps=maps_filtered, player=player)
+    after_maps = time.perf_counter()
+
+    map_uids = [m.map_uid for m in maps]
+
+    replays = []
+
+    if map_uids:
+        replays = (
+            db.session.query(ParsedReplay)
+            .filter(ParsedReplay.map_uid.in_(map_uids))
+            .order_by(ParsedReplay.map_uid.asc(), ParsedReplay.race_time.asc())
+            .all()
+        )
+
+    after_replays = time.perf_counter()
+
+    replays_by_map = {}
+
+    for replay in replays:
+        replays_by_map.setdefault(replay.map_uid, []).append(replay)
+
+    for map_obj in maps:
+        map_replays = replays_by_map.get(map_obj.map_uid, [])
+
+        map_obj._best_replay = map_replays[0] if map_replays else None
+
+        map_obj._second_best_replay = next(
+            (
+                replay
+                for replay in map_replays
+                if map_obj._best_replay
+                and replay.login != map_obj._best_replay.login
+            ),
+            None,
+        )
+
+        map_obj._player_best_replay = next(
+            (
+                replay
+                for replay in map_replays
+                if replay.login == player or replay.uploader == player
+            ),
+            None,
+        )
+
+    after_grouping = time.perf_counter()
+
+    response = flask.render_template(
+        "index.html",
+        maps=maps,
+        player=player,
+    )
+
+    after_render = time.perf_counter()
+
+    print({
+        "settings_ms": round((after_settings - started) * 1000, 2),
+        "maps_ms": round((after_maps - after_settings) * 1000, 2),
+        "replays_ms": round((after_replays - after_maps) * 1000, 2),
+        "grouping_ms": round((after_grouping - after_replays) * 1000, 2),
+        "render_ms": round((after_render - after_grouping) * 1000, 2),
+        "total_ms": round((after_render - started) * 1000, 2),
+        "map_count": len(maps),
+        "replay_count": len(replays),
+    }, file=sys.stderr)
+
+    return response
 
 @app.route("/open-info")
 def openinfo():

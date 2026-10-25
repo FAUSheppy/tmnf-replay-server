@@ -13,10 +13,10 @@ jobs:
     environment:
         name: prod
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
       -
         name: Login to Docker Registry
         uses: docker/login-action@v2

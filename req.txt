@@ -1,8 +1,8 @@
-flask
-flask-sqlalchemy
-pygbx
-werkzeug
-xmltodict
-requests
-psycopg2-binary
-boto3
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+pygbx==0.3
+Werkzeug==3.1.8
+xmltodict==1.0.4
+requests==2.34.2
+psycopg2-binary==2.9.12
+boto3==1.43.67

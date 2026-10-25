@@ -4,5 +4,5 @@ pygbx==0.3
 Werkzeug==3.1.8
 xmltodict==1.0.4
 requests==2.34.2
-psycopg2-binary==2.9.12
+psycopg2-binary==2.9.13
 boto3==1.43.118

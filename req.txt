@@ -5,4 +5,4 @@ Werkzeug==3.1.9
 xmltodict==1.0.4
 requests==2.34.2
 psycopg2-binary==2.9.13
-boto3==1.43.118
+boto3==1.43.123
